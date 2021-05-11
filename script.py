@@ -10,6 +10,9 @@ API_TOKEN = os.getenv("API_TOKEN")
 
 VACCINE_TRACKER_BASE_URL = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin"
 TELEGRAM_BOT_BASE_URL = "https://api.telegram.org/bot"
+REQUEST_HEADERS = {
+	'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
+}
 
 USER_DATA_FILENAME = "./user_data.json"
 
@@ -28,10 +31,7 @@ def get_new_user_data():
 	user_id_pincode_dict = {}
 	bot_update_url = "https://api.telegram.org/bot{}/getUpdates".format(API_TOKEN)
 
-	headers = {
-		'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
-	}
-	response = requests.get(bot_update_url, headers=headers)
+	response = requests.get(bot_update_url, headers=REQUEST_HEADERS)
 
 	json_data = response.json()
 
@@ -56,12 +56,9 @@ def get_new_user_data():
 
 def fetch_data(pincode):
 	try:
-		headers = {
-			'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
-		}
 
 		API_URL = VACCINE_TRACKER_BASE_URL + '?pincode={}&date=11-05-2021'.format(pincode)
-		response = requests.get(API_URL, headers=headers)
+		response = requests.get(API_URL, headers=REQUEST_HEADERS)
 
 		if response.status_code != 200:
 			return False
@@ -145,18 +142,12 @@ def send_notification(msg_dict, recipient_ids):
 
 	for msg_group in msg_dict:
 		if msg_group['has_data']:
-			print(msg_group)
 			for recipient_id in recipient_ids:
 
 				time.sleep(1)
 
 				try:
-					print(recipient_id)
-					headers = {
-						'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
-					}
-
-					response = requests.get("https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}".format(API_TOKEN, recipient_id, msg_group['msg']), headers=headers)
+					response = requests.get("https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}".format(API_TOKEN, recipient_id, msg_group['msg']), headers=REQUEST_HEADERS)
 
 					print(response.status_code)
 					print("success")
