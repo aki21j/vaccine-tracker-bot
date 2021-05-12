@@ -1,0 +1,3 @@
+- move from cron based logic to wgsi server
+- setup webhooks from telegram
+- allow users to view subscribed pincodes
