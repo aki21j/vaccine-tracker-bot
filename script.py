@@ -4,6 +4,7 @@ import os
 import time
 import datetime
 from dotenv import load_dotenv
+import re
 
 load_dotenv()
 
@@ -40,6 +41,17 @@ def read_user_data():
 			user_id_pincode_dict = json.load(infile)
 	return user_id_pincode_dict
 
+def is_valid_pincode(pincode):
+	pattern = "^[1-9]{1}[0-9]{2}\\s{0,1}[0-9]{3}$"
+	match_compiler = re.compile(pattern)
+	
+	is_valid = re.match(match_compiler, pincode);
+
+	if is_valid is None:
+		return False
+	else:
+		return True
+
 def get_new_user_data(user_id_pincode_dict, offset_id=None):
 	bot_update_url = "https://api.telegram.org/bot{}/getUpdates".format(API_TOKEN)
 
@@ -60,23 +72,47 @@ def get_new_user_data(user_id_pincode_dict, offset_id=None):
 
 	for data in result_list:
 		if 'update_id' in data:
+			if latest_offset_id == data['update_id']:
+				return
 			latest_offset_id = data['update_id']
 		if 'message' in data and 'text' in data['message']:
 			chat_id = data['message']['chat']['id']
 	
 			if 'unsub-pincode' in data['message']['text']:
-				pincode = data['message']['text'].split(" ").pop()
-				if pincode in user_id_pincode_dict and chat_id in user_id_pincode_dict[pincode]:
-					user_id_pincode_dict[pincode].remove(chat_id)
+				text_list = data['message']['text'].split(" ")
+
+				if len(text_list) > 1:
+					pincode = text_list.pop()
+
+					if is_valid_pincode(pincode) is False:
+						continue
+					
+					if pincode in user_id_pincode_dict and chat_id in user_id_pincode_dict[pincode]:
+						user_id_pincode_dict[pincode].remove(chat_id)
 			
 			elif 'pincode' in data['message']['text']:
-				pincode = data['message']['text'].split(" ").pop()
-				if pincode in user_id_pincode_dict:
-					user_id_pincode_dict[pincode].append(chat_id)
-				else:
-					user_id_pincode_dict[pincode] = [chat_id]
+				text_list = data['message']['text'].split(" ")
 
-	save_user_data(user_id_pincode_dict)
+				if len(text_list) > 1:
+					pincode = text_list.pop()
+					
+					if is_valid_pincode(pincode) is False:
+						continue
+					
+					if pincode in user_id_pincode_dict:
+						user_id_pincode_dict[pincode].append(chat_id)
+					else:
+						user_id_pincode_dict[pincode] = [chat_id]
+
+	user_data_without_duplicates = {}
+
+	for key in user_id_pincode_dict:
+		if len(user_id_pincode_dict[key]) == 0:
+			continue
+		user_data_without_duplicates[key] = list(set(user_id_pincode_dict[key]))
+	
+	# print(user_id_pincode_dict)
+	save_user_data(user_data_without_duplicates)
 
 	save_offset_data(latest_offset_id)
 	
@@ -89,7 +125,7 @@ def fetch_data(pincode):
 		response = requests.get(API_URL, headers=REQUEST_HEADERS)
 
 		if response.status_code != 200:
-			return False
+			return []
 
 		json_data = response.json()
 		centre_list = []
@@ -193,6 +229,7 @@ def main():
 
 	for pincode in user_data:	
 		response_data = fetch_data(pincode)
+
 		msg_dict = identify_available_slots(response_data)
 
 		send_notification(msg_dict, user_data[pincode])
