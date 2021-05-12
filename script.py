@@ -2,6 +2,7 @@ import requests
 import json
 import os
 import time
+import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,6 +16,18 @@ REQUEST_HEADERS = {
 }
 
 USER_DATA_FILENAME = "./user_data.json"
+DATA_OFFSET_FILE = "./data_offset.json"
+
+def read_offset_data():
+	offset_data = None
+	if os.path.exists(DATA_OFFSET_FILE):
+		infile = open(DATA_OFFSET_FILE, 'r')
+		offset_data = infile.read()
+	return offset_data
+
+def save_offset_data(latest_offset):
+	outfile = open(DATA_OFFSET_FILE, 'w')
+	outfile.write(str(latest_offset))
 
 def save_user_data(user_id_pincode_dict):
 	with open(USER_DATA_FILENAME, 'w') as outfile:
@@ -27,9 +40,13 @@ def read_user_data():
 			user_id_pincode_dict = json.load(infile)
 	return user_id_pincode_dict
 
-def get_new_user_data():
-	user_id_pincode_dict = {}
+def get_new_user_data(user_id_pincode_dict, offset_id=None):
 	bot_update_url = "https://api.telegram.org/bot{}/getUpdates".format(API_TOKEN)
+
+	if offset_id:
+		bot_update_url += "?offset={}".format(offset_id)
+
+	latest_offset_id = offset_id
 
 	response = requests.get(bot_update_url, headers=REQUEST_HEADERS)
 
@@ -42,15 +59,26 @@ def get_new_user_data():
 	result_list = json_data['result']
 
 	for data in result_list:
-		if 'message' in data and 'text' in data['message'] and 'pincode' in data['message']['text']:
+		if 'update_id' in data:
+			latest_offset_id = data['update_id']
+		if 'message' in data and 'text' in data['message']:
 			chat_id = data['message']['chat']['id']
-			pincode = data['message']['text'].split(" ").pop()
-			if pincode in user_id_pincode_dict:
-				user_id_pincode_dict[pincode].append(chat_id)
-			else:
-				user_id_pincode_dict[pincode] = [chat_id]
+	
+			if 'unsub-pincode' in data['message']['text']:
+				pincode = data['message']['text'].split(" ").pop()
+				if pincode in user_id_pincode_dict:
+					user_id_pincode_dict[pincode].remove(chat_id)
+			
+			elif 'pincode' in data['message']['text']:
+				pincode = data['message']['text'].split(" ").pop()
+				if pincode in user_id_pincode_dict:
+					user_id_pincode_dict[pincode].append(chat_id)
+				else:
+					user_id_pincode_dict[pincode] = [chat_id]
 
 	save_user_data(user_id_pincode_dict)
+
+	save_offset_data(latest_offset_id)
 	
 	return 
 
@@ -149,24 +177,31 @@ def send_notification(msg_dict, recipient_ids):
 				try:
 					response = requests.get("https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}".format(API_TOKEN, recipient_id, msg_group['msg']), headers=REQUEST_HEADERS)
 
-					print(response.status_code)
-					print("success")
+					if response.status_code != 200:
+						print("Notification not sent for recipient id: {}".format(str(recipient_id)))
 				except Exception as e:
 					print("CANNOT SEND MSG:{}".format(e))
 
 def main():
-	get_new_user_data()
+
+	latest_offset = read_offset_data()
 
 	user_data = read_user_data()
+
+	get_new_user_data(user_data, latest_offset)
+
 
 	for pincode in user_data:	
 		response_data = fetch_data(pincode)
 		msg_dict = identify_available_slots(response_data)
 
-		print(msg_dict)
 		send_notification(msg_dict, user_data[pincode])
 
 
 
 if __name__ == "__main__":
+	start_time = datetime.datetime.now()
+	print("Script started at : {}".format(str(start_time)))
 	main()
+	run_time = datetime.datetime.now() - start_time
+	print("Total Runtime : {}".format(str(run_time)))
