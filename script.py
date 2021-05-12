@@ -151,13 +151,15 @@ def identify_available_slots(centre_list):
 			"group": 18,
 			"data_count": 0,
 			"has_data": False,
-			"msg": "Age group: 18-44, available at \n",
+			"grouped_msgs": {},
+			"msg": "Vaccine Slots for Age group: 18-44: \n",
 		},
 		{
 			"group": 45,
 			"data_count": 0,
 			"has_data": False,
-			"msg": "Age group: 45+, available at \n"
+			"grouped_msgs": {},
+			"msg": "Vaccine Slots for Age group: 45+: \n"
 		}
 	]
 
@@ -176,6 +178,7 @@ def identify_available_slots(centre_list):
 					"block": centre['block_name'],
 					"pincode": centre['pincode'],
 					"vaccine": session['vaccine'],
+					"date": session['date'],
 					"type": centre['fee_type'],
 					"group": session['min_age_limit'],
 					"quantity": session['available_capacity']
@@ -188,7 +191,22 @@ def identify_available_slots(centre_list):
 				
 				data_by_group[group_idx]['data_count'] += 1
 				data_by_group[group_idx]['has_data'] = True
-				data_by_group[group_idx]['msg'] +="\n\n {}. {}".format(data_by_group[group_idx]['data_count'],prepare_msg(free_centre))
+			
+
+				formatted_msg = "\n{}".format(prepare_msg(free_centre))
+
+				if session['date'] in data_by_group[group_idx]['grouped_msgs']:
+					data_by_group[group_idx]['grouped_msgs'][session['date']]['msg'] += '\n' + formatted_msg
+				else: 
+					data_by_group[group_idx] = {
+						**data_by_group[group_idx],
+						'grouped_msgs': {
+							**data_by_group[group_idx]['grouped_msgs'],
+							session['date']: {
+								'msg': "\n\nDate: {}\n{}".format(session['date'],formatted_msg)
+							}
+						}
+					}
 				
 				free_slots.append(free_centre)
 
@@ -208,19 +226,24 @@ def prepare_msg(data_dict):
 
 def send_notification(msg_dict, recipient_ids):
 
+
 	for msg_group in msg_dict:
-		if msg_group['has_data']:
+		if msg_group['has_data']:			
 			for recipient_id in recipient_ids:
 
-				time.sleep(1)
+				for date_key in msg_group['grouped_msgs']:
+					msg_data = msg_group['grouped_msgs'][date_key]['msg']
 
-				try:
-					response = requests.get("https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}".format(API_TOKEN, recipient_id, msg_group['msg']), headers=REQUEST_HEADERS)
+					time.sleep(1)
 
-					if response.status_code != 200:
-						print("Notification not sent for recipient id: {}".format(str(recipient_id)))
-				except Exception as e:
-					print("CANNOT SEND MSG:{}".format(e))
+					try:
+						response = requests.get("https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}".format(API_TOKEN, recipient_id, msg_data), headers=REQUEST_HEADERS)
+
+
+						if response.status_code != 200:
+							print("Notification not sent for recipient id: {}, error: {}".format(str(recipient_id), response.text))
+					except Exception as e:
+						print("CANNOT SEND MSG:{}".format(e))
 
 def main():
 
