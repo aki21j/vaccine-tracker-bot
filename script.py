@@ -66,7 +66,7 @@ def get_new_user_data(user_id_pincode_dict, offset_id=None):
 	
 			if 'unsub-pincode' in data['message']['text']:
 				pincode = data['message']['text'].split(" ").pop()
-				if pincode in user_id_pincode_dict:
+				if pincode in user_id_pincode_dict and chat_id in user_id_pincode_dict[pincode]:
 					user_id_pincode_dict[pincode].remove(chat_id)
 			
 			elif 'pincode' in data['message']['text']:
