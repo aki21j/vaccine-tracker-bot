@@ -9,6 +9,7 @@ import re
 load_dotenv()
 
 API_TOKEN = os.getenv("API_TOKEN")
+DATA_DIRECTORY = os.getenv("DATA_DIRECTORY")
 
 VACCINE_TRACKER_BASE_URL = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin"
 TELEGRAM_BOT_BASE_URL = "https://api.telegram.org/bot"
@@ -16,8 +17,8 @@ REQUEST_HEADERS = {
 	'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
 }
 
-USER_DATA_FILENAME = "./user_data.json"
-DATA_OFFSET_FILE = "./data_offset.json"
+USER_DATA_FILENAME = DATA_DIRECTORY + "/user_data.json"
+DATA_OFFSET_FILE = DATA_DIRECTORY + "/data_offset.json"
 
 def read_offset_data():
 	offset_data = None
@@ -121,7 +122,10 @@ def get_new_user_data(user_id_pincode_dict, offset_id=None):
 def fetch_data(pincode):
 	try:
 
-		API_URL = VACCINE_TRACKER_BASE_URL + '?pincode={}&date=11-05-2021'.format(pincode)
+		current_date = datetime.date.today()
+		formatted_date = current_date.strftime("%d-%m-%Y")
+		
+		API_URL = VACCINE_TRACKER_BASE_URL + '?pincode={}&date={}'.format(pincode, formatted_date)
 		response = requests.get(API_URL, headers=REQUEST_HEADERS)
 
 		if response.status_code != 200:
@@ -226,6 +230,7 @@ def main():
 
 	get_new_user_data(user_data, latest_offset)
 
+	print("Available user_data: {}".format(user_data))
 
 	for pincode in user_data:	
 		response_data = fetch_data(pincode)
