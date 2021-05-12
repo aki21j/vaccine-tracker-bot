@@ -79,7 +79,7 @@ def get_new_user_data(user_id_pincode_dict, offset_id=None):
 		if 'message' in data and 'text' in data['message']:
 			chat_id = data['message']['chat']['id']
 	
-			if 'unsubPincode' in data['message']['text']:
+			if 'unsub_pincode' in data['message']['text']:
 				text_list = data['message']['text'].split(" ")
 
 				if len(text_list) > 1:
