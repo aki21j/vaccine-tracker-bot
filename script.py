@@ -191,8 +191,9 @@ def identify_available_slots(centre_list):
 				
 				data_by_group[group_idx]['data_count'] += 1
 				data_by_group[group_idx]['has_data'] = True
-			
 
+				age_group = str(session['min_age_limit']) + "+"
+		
 				formatted_msg = "\n{}".format(prepare_msg(free_centre))
 
 				if session['date'] in data_by_group[group_idx]['grouped_msgs']:
@@ -203,7 +204,7 @@ def identify_available_slots(centre_list):
 						'grouped_msgs': {
 							**data_by_group[group_idx]['grouped_msgs'],
 							session['date']: {
-								'msg': "\n\nDate: {}\n{}".format(session['date'],formatted_msg)
+								'msg': "\n\nAge group: {}\nDate: {}\n{}".format(age_group,session['date'],formatted_msg)
 							}
 						}
 					}
