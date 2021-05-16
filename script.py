@@ -170,7 +170,7 @@ def identify_available_slots(centre_list):
 
 		for session in centre['sessions']:
 
-			if session['available_capacity'] > 0:
+			if session['available_capacity'] > 50:
 				free_centre = {
 					"name": centre['name'],
 					"address": centre['address'], 
