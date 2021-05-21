@@ -234,6 +234,8 @@ def send_notification(msg_dict, recipient_ids):
 
 				for date_key in msg_group['grouped_msgs']:
 					msg_data = msg_group['grouped_msgs'][date_key]['msg']
+					print("-------------------------------------")
+					print('SENDING DATA: {}'.format(msg_data))
 
 					time.sleep(1)
 
